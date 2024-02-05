@@ -2,8 +2,11 @@
 const { parse } = require('csv-parse');
 //using FileSystem pckg to open the csv file
 const fs = require('fs');
+
+const planets = require('./planets.mongo');
+
 // using array to store the response from File System after opening the csv file
-const habitablePlanet = [];
+// const habitablePlanet = [];
 
 const path = require('path');
 
@@ -25,9 +28,10 @@ return new Promise ((resolve, reject) => {
     comment: '#',
     columns: true
  }))
- .on('data',(data)=>{
+ .on('data',async (data)=>{
     if(isHabitablePlanet(data)){
-        habitablePlanet.push(data);
+        // habitablePlanet.push(data);
+        savePlanet(data);
     }
     
  })
@@ -44,8 +48,31 @@ return new Promise ((resolve, reject) => {
 }
 
 
-function getAllPlanets(){
-    return habitablePlanet;
+async function getAllPlanets(){
+    // return habitablePlanet from planets mongo db using the find() function passing empty object as parameter since we need all available data.
+    //find({},{__v:0,_id:0}) means to exclude _id and __v fields from returned data
+    return await planets.find({},{
+        __v:0,
+        _id:0
+    });
+}
+
+async function savePlanet(data){
+    
+        // saving the data to the database using the planets mongo model 
+        /*
+        below UpdateOne function is used to update the data in the database (only insert if dosen't
+        already exist) update.One({the data to be searching for}, {if not exist then insert},{upsert})
+        */
+       try{
+        await planets.updateOne({
+            keplerName: data.kepler_name
+        },{
+            keplerName: data.kepler_name
+        },{upsert:true});
+    } catch(err){
+        console.log(`Could not save the planet ${err}`);
+    }
 }
 
 

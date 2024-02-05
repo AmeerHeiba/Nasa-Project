@@ -1,9 +1,13 @@
-const {getAllLaunches, addNewLaunch, deleteLaunch, existsLaunch} = require('../../model/launches.model');
-function httpGetAllLaunches(req, res) {
-    return res.status(200).json(getAllLaunches());
+const {getAllLaunches, scheduleNewLaunch, abortLaunch, existsLaunchWithId} = require('../../model/launches.model');
+
+const {getPagination} = require('../../services/query');
+async function httpGetAllLaunches(req, res) {
+    const {skip, limit} = getPagination(req.query);
+    const launches = await getAllLaunches(skip, limit);
+    return res.status(200).json(launches);
 }
 
-function httpAddNewLaunch(req, res) {
+async function httpAddNewLaunch(req, res) {
 
     const launch = req.body;
 
@@ -15,21 +19,28 @@ function httpAddNewLaunch(req, res) {
     launch.launchDate = new Date(launch.launchDate);
     launch.launchDate.toString() === 'Invalid Date'? res.status(400).json({message: 'Invalid Date'}) : null;
 
-    addNewLaunch(launch);
+    await scheduleNewLaunch(launch);
     res.status(201).json(launch);
 }
 
 
-function httpDeleteLaunch(req, res) {
+async function httpDeleteLaunch(req, res) {
     const flightNumber = req.params.flightNumber;
-    if(!existsLaunch(flightNumber)){
+    const existsLaunch = await existsLaunchWithId(Number(flightNumber));
+    if(!existsLaunch){
         return res.status(404).json({
             message: 'Launch not found'
         });
     }
 
-    const aborted =deleteLaunch(Number(flightNumber));
-    res.status(200).json(aborted);
+    const aborted = await abortLaunch(Number(flightNumber));
+
+    if(!aborted){
+        return res.status(400).json({
+            message: 'Data was not updated'
+        });
+    }
+    res.status(200).json({ok: true});
 }
 module.exports = {
     httpGetAllLaunches,
